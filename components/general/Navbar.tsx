@@ -1,8 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "../ui/button";
 
-export function Navbar() {
+import {
+  LoginLink,
+  LogoutLink,
+  RegisterLink,
+} from "@kinde-oss/kinde-auth-nextjs/components";
+import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+
+export async function Navbar() {
+  const { getUser } = getKindeServerSession();
+  const user = await getUser();
   return (
     <nav className="py-5 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -35,20 +43,25 @@ export function Navbar() {
           </Link>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <Button
-          variant={"default"}
-          className="bg-zinc-100 rounded-xl hover:text-green-500 transition-colors"
-        >
-          log in
-        </Button>
-        <Button
-          variant={"secondary"}
-          className="bg-zinc-100 rounded-xl hover:text-green-500 transition-colors"
-        >
-          sign up
-        </Button>
-      </div>
+      {user ? (
+        <div className="flex items-center gap-4">
+          <p>{user.given_name}</p>
+          <LogoutLink className="bg-zinc-200 rounded-lg px-4 py-1 hover:text-green-500 transition-colors items-center">
+            logout
+          </LogoutLink>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4">
+          <LoginLink className="bg-zinc-200 rounded-lg px-4 py-1 hover:text-green-500 transition-colors items-center">
+            {" "}
+            login
+          </LoginLink>
+          <RegisterLink className="bg-zinc-200 rounded-lg px-4 py-1 hover:text-green-500 transition-colors items-center">
+            {" "}
+            sign up
+          </RegisterLink>
+        </div>
+      )}
     </nav>
   );
 }

@@ -1,11 +1,18 @@
+import { prisma } from "@/lib/prisma";
+
 async function getData() {
-  const items = [
-    {
-      title: "gfftyjmmgvf",
-      content: "mkggdcdffgbv",
+  const data = await prisma.blogPost.findMany({
+    select: {
+      title: true,
+      content: true,
+      imageUrl: true,
+      authorImage: true,
+      authorName: true,
+      id: true,
+      createdAt: true,
     },
-  ];
-  return items;
+  });
+  return data;
 }
 
 export default async function Home() {
