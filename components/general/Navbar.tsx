@@ -7,6 +7,7 @@ import {
   RegisterLink,
 } from "@kinde-oss/kinde-auth-nextjs/components";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+import { buttonVariants } from "../ui/button";
 
 export async function Navbar() {
   const { getUser } = getKindeServerSession();
@@ -46,17 +47,17 @@ export async function Navbar() {
       {user ? (
         <div className="flex items-center gap-4">
           <p>{user.given_name}</p>
-          <LogoutLink className="bg-zinc-200 rounded-lg px-4 py-1 hover:text-green-500 transition-colors items-center">
+          <LogoutLink className={buttonVariants({ variant: "default" })}>
             logout
           </LogoutLink>
         </div>
       ) : (
         <div className="flex items-center gap-4">
-          <LoginLink className="bg-zinc-200 rounded-lg px-4 py-1 hover:text-green-500 transition-colors items-center">
+          <LoginLink className={buttonVariants({ variant: "default" })}>
             {" "}
             login
           </LoginLink>
-          <RegisterLink className="bg-zinc-200 rounded-lg px-4 py-1 hover:text-green-500 transition-colors items-center">
+          <RegisterLink className={buttonVariants({ variant: "secondary" })}>
             {" "}
             sign up
           </RegisterLink>
