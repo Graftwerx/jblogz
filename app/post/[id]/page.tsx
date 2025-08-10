@@ -6,6 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { deletePost } from "@/app/actions";
+import { DeleteButton } from "@/components/general/DeleteButton";
 
 async function getData(id: string) {
   const data = await prisma.blogPost.findUnique({
@@ -56,12 +57,7 @@ export default async function page({ params }: { params: Params }) {
               edit
             </Link>
             <form action={onDelete}>
-              <button
-                className={buttonVariants({ variant: "destructive" })}
-                type="submit"
-              >
-                delete
-              </button>
+              <DeleteButton />
             </form>
           </div>
         )}
