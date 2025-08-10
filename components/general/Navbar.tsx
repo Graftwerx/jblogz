@@ -17,7 +17,7 @@ export async function Navbar() {
       <div className="flex items-center gap-3">
         <Link href={"/"}>
           <Image
-            src={"/emblemIN.png"}
+            src={"/officialflag.png"}
             alt="logo"
             height={36}
             width={36}
