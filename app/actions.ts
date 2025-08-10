@@ -29,3 +29,39 @@ export async function handleSubmission(formData: FormData){
     })
     return redirect("/dashboard")
 }
+
+export async function updatePost(postId: string, formData: FormData) {
+  const { getUser } = getKindeServerSession();
+  const user = await getUser();
+  if (!user) return redirect("/api/auth/register");
+
+  const post = await prisma.blogPost.findUnique({ where: { id: postId } });
+  if (!post) throw new Error("Post not found");
+  if (post.authorId !== user.id) throw new Error("Not allowed");
+
+  const title = String(formData.get("title") || "").trim();
+  const content = String(formData.get("content") || "").trim();
+  const imageUrl = String(formData.get("imageUrl") || "").trim();
+  if (!title || !content || !imageUrl) throw new Error("Missing fields");
+
+  await prisma.blogPost.update({
+    where: { id: postId },
+    data: { title, content, imageUrl },
+  });
+
+   return redirect("/dashboard")
+}
+
+// DELETE
+export async function deletePost(postId: string) {
+  const { getUser } = getKindeServerSession();
+  const user = await getUser();
+  if (!user) return redirect("/api/auth/register");
+
+  const post = await prisma.blogPost.findUnique({ where: { id: postId } });
+  if (!post) throw new Error("Post not found");
+  if (post.authorId !== user.id) throw new Error("Not allowed");
+
+  await prisma.blogPost.delete({ where: { id: postId } });
+  return redirect("/dashboard");
+}
