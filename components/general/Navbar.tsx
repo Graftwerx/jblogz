@@ -26,7 +26,9 @@ export async function Navbar() {
         <Link href={"/"}>
           {" "}
           <h1 className="text-3xl font-semibold">
-            Ibo<span className="text-green-500">Blog</span>
+            <span className="text-red-700">eeb</span>o
+            <span className="text-yellow-400">b</span>l
+            <span className="text-green-700">ogs</span>
           </h1>
         </Link>
         <div className="hidden sm:flex items-center gap-6">
