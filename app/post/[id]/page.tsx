@@ -93,6 +93,30 @@ export default async function page({ params }: { params: Params }) {
               />
             </div>
           )}
+
+          {data.videoUrl && (
+            <div className="px-6 pb-4">
+              <video
+                src={data.videoUrl}
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full rounded-lg border"
+              />
+            </div>
+          )}
+
+          {data.audioUrl && (
+            <div className="px-6 pb-4">
+              <audio
+                src={data.audioUrl}
+                controls
+                preload="metadata"
+                className="w-full"
+              />
+            </div>
+          )}
+
           <div className="px-6 py-4">
             <h1 className="mb-4 text-2xl font-bold">{data.title}</h1>
             <p className="whitespace-pre-line">{data.content}</p>

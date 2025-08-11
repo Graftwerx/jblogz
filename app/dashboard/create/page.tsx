@@ -43,7 +43,7 @@ export default function CreateBlogPage() {
           {/* Media uploads (each optional) */}
           <div className="flex flex-col gap-4">
             {/* Make sure your UploadImageField does NOT hard-block submit if empty */}
-            <UploadImageField />
+            <UploadImageField enforce={false} />
             <UploadVideoField />
             <UploadAudioField />
           </div>

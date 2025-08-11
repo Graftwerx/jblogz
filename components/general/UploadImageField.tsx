@@ -5,7 +5,11 @@ import { UploadButton } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { Label } from "@/components/ui/label";
 
-export default function UploadImageField() {
+export default function UploadImageField({
+  enforce = true,
+}: {
+  enforce?: boolean;
+}) {
   const [url, setUrl] = React.useState("");
   const [isUploading, setUploading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
@@ -13,13 +17,12 @@ export default function UploadImageField() {
   const [done, setDone] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
 
-  // Normalize 0–1 vs 0–100 into %
   const setPct = (p: number) =>
     setProgress(
       Math.max(0, Math.min(100, p <= 1 ? Math.round(p * 100) : Math.round(p)))
     );
 
-  // Prevent form submit until upload finishes and URL exists
+  // Only block submit if enforce === true
   React.useEffect(() => {
     const form = rootRef.current?.closest("form") as HTMLFormElement | null;
     if (!form) return;
@@ -28,7 +31,7 @@ export default function UploadImageField() {
       if (isUploading) {
         e.preventDefault();
         setError("Please wait for the upload to finish.");
-      } else if (!url) {
+      } else if (enforce && !url) {
         e.preventDefault();
         setError("Please upload an image before submitting.");
       }
@@ -36,9 +39,9 @@ export default function UploadImageField() {
 
     form.addEventListener("submit", onSubmit);
     return () => form.removeEventListener("submit", onSubmit);
-  }, [isUploading, url]);
+  }, [isUploading, url, enforce]);
 
-  // Optional: visually disable submit buttons while uploading
+  // Only disable submit buttons if uploading; if enforce is true, also disable when empty
   React.useEffect(() => {
     const form = rootRef.current?.closest("form") as HTMLFormElement | null;
     if (!form) return;
@@ -47,19 +50,18 @@ export default function UploadImageField() {
         'button[type="submit"], [role="button"][type="submit"]'
       )
     );
-    buttons.forEach((b) => (b.disabled = isUploading || !url));
+    const shouldDisable = isUploading || (enforce && !url);
+    buttons.forEach((b) => (b.disabled = shouldDisable));
     return () => buttons.forEach((b) => (b.disabled = false));
-  }, [isUploading, url]);
+  }, [isUploading, url, enforce]);
 
   return (
     <div className="flex flex-col gap-2" ref={rootRef}>
-      <Label>Image</Label>
+      <Label>Image (optional)</Label>
 
-      {/* keep server action shape exactly the same */}
       <input type="hidden" name="imageUrl" value={url} />
 
       <div className="relative overflow-hidden rounded-xl border border-dashed border-gray-300 bg-gray-100 p-6 text-center dark:border-gray-700 dark:bg-gray-900/30">
-        {/* centered icon */}
         <svg
           aria-hidden="true"
           className="mx-auto mb-3 h-10 w-10 text-gray-400"
@@ -84,11 +86,10 @@ export default function UploadImageField() {
               setUploading(true);
               setPct(p as number);
             }}
-            onClientUploadComplete={(res) => {
+            onClientUploadComplete={(res: { url?: string }[]) => {
               setUploading(false);
               setPct(100);
-              // prefer top-level url; fall back to serverData.url
-              const u = res?.[0]?.url ?? res?.[0]?.serverData?.url;
+              const u = res?.[0]?.url;
               if (u) setUrl(u);
               setDone(true);
               setTimeout(() => setDone(false), 1800);
@@ -107,7 +108,6 @@ export default function UploadImageField() {
           />
         </div>
 
-        {/* progress bar */}
         <div
           className="mt-4 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800"
           role="progressbar"
@@ -121,7 +121,6 @@ export default function UploadImageField() {
           />
         </div>
 
-        {/* status line */}
         <p className="mt-2 text-xs text-muted-foreground">
           {isUploading
             ? `Uploading… ${progress}%`
@@ -130,7 +129,6 @@ export default function UploadImageField() {
             : "Upload a JPG/PNG (max 4 MB)."}
         </p>
 
-        {/* completion badge */}
         {done && (
           <div
             className="pointer-events-none absolute right-3 top-3 rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-600 ring-1 ring-inset ring-emerald-500/20"
@@ -141,7 +139,6 @@ export default function UploadImageField() {
           </div>
         )}
 
-        {/* error */}
         {error && (
           <div
             className="mt-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-600 ring-1 ring-inset ring-red-500/20"
@@ -152,7 +149,6 @@ export default function UploadImageField() {
         )}
       </div>
 
-      {/* tiny preview */}
       {url && (
         <div className="mt-3 overflow-hidden rounded-lg border bg-white dark:bg-gray-900">
           {/* eslint-disable-next-line @next/next/no-img-element */}
