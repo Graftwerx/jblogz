@@ -111,7 +111,7 @@ export default function UploadImageField({
             appearance={{
               container: "ut-container",
               button:
-                "ut-button inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-zinc-400 font-medium shadow-sm transition hover:bg-gray-50 disabled:opacity-60",
+                "ut-button inline-flex items-center rounded-md border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-zinc-400 font-medium shadow-sm transition hover:bg-gray-50 disabled:opacity-60",
               allowedContent: "sr-only",
             }}
           />

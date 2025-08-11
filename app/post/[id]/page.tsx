@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { deletePost } from "@/app/actions";
 import { DeleteButton } from "@/components/general/DeleteButton";
+import Interactions from "@/components/post/Interactions";
 
 async function getData(id: string) {
   const data = await prisma.blogPost.findUnique({
@@ -98,6 +99,7 @@ export default async function page({ params }: { params: Params }) {
           </div>
         </CardContent>
       </Card>
+      <Interactions postId={id} />
     </div>
   );
 }

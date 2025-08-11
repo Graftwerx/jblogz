@@ -4,6 +4,7 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// --- existing ---
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,4 +25,60 @@ model BlogPost {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // --- new, optional convenience relations ---
+  comments Comment[]
+  likes    PostLike[]
+}
+
+// --- NEW: post likes (one like per user per post) ---
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String // from your auth system; no FK if you don't model User here
+  createdAt DateTime @default(now())
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId]) // prevents double-like
+  @@index([postId])
+  @@index([userId])
+}
+
+// --- NEW: comments (replies are comments with parentId set) ---
+model Comment {
+  id          String   @id @default(uuid())
+  postId      String
+  authorId    String // signed-in user id
+  content     String
+  authorName  String
+  authorImage String
+  parentId    String? // null = top-level comment; set = reply
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // relations
+  post    BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  likes CommentLike[]
+
+  // helpful indexes
+  @@index([postId, parentId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+// --- NEW: comment/reply likes (one like per user per comment) ---
+model CommentLike {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String // signed-in user id
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId]) // prevents double-like
+  @@index([commentId])
+  @@index([userId])
 }
