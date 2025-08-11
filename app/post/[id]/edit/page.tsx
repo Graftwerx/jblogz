@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SubmitButton } from "@/components/general/SubmitButton";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { redirect, notFound } from "next/navigation";
+import UploadImageField from "@/components/general/EditUploadedImage";
 
 async function getData(id: string) {
   const post = await prisma.blogPost.findUnique({ where: { id } });
@@ -59,13 +60,7 @@ export default async function EditPostPage({ params }: { params: Params }) {
             <Textarea name="content" required defaultValue={post.content} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Image</Label>
-            <Input
-              name="imageUrl"
-              required
-              type="url"
-              defaultValue={post.imageUrl}
-            />
+            <UploadImageField initialUrl={post.imageUrl ?? ""} />
           </div>
           <SubmitButton />
         </form>

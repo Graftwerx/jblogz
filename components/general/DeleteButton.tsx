@@ -10,7 +10,7 @@ export function DeleteButton() {
   return (
     <button
       type="submit"
-      className={cn(buttonVariants({ variant: "destructive" }))}
+      className={cn(buttonVariants({ variant: "default" }))}
       disabled={pending}
       onClick={(e) => {
         if (

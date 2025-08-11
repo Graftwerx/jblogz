@@ -1,5 +1,6 @@
 import { handleSubmission } from "@/app/actions";
 import { SubmitButton } from "@/components/general/SubmitButton";
+import UploadImageField from "@/components/general/UploadImageField";
 
 import {
   Card,
@@ -30,13 +31,7 @@ export default function CreateBlogPage() {
             <Textarea name="content" required placeholder="content" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Image</Label>
-            <Input
-              name="imageUrl"
-              required
-              type="url"
-              placeholder="image url"
-            />
+            <UploadImageField />
           </div>
           <SubmitButton />
         </form>
