@@ -15,10 +15,12 @@ datasource db {
 }
 
 model BlogPost {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   content     String
-  imageUrl    String
+  imageUrl    String? // <- now optional
+  videoUrl    String? // <- new
+  audioUrl    String? // <- new
   authorId    String
   authorName  String
   authorImage String

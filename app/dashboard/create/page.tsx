@@ -1,4 +1,4 @@
-import { handleSubmission } from "@/app/actions";
+import { handleSubmissionAction } from "@/app/actions";
 import { SubmitButton } from "@/components/general/SubmitButton";
 import UploadImageField from "@/components/general/UploadImageField";
 
@@ -12,6 +12,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import UploadVideoField from "@/components/general/UploadVideoField";
+import UploadAudioField from "@/components/general/UploadAudioField";
+import MediaAtLeastOneGuard from "@/components/general/MediaAtLeastOneGuard";
 
 export default function CreateBlogPage() {
   return (
@@ -21,18 +24,33 @@ export default function CreateBlogPage() {
         <CardDescription>share a new post with the world</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmission} className="flex flex-col gap-4">
+        {/* Note: form needs a ref/id so the guard can find it */}
+        <form
+          id="create-post-form"
+          action={handleSubmissionAction}
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-2">
             <Label>Title</Label>
             <Input name="title" required type="text" placeholder="title" />
           </div>
+
           <div className="flex flex-col gap-2">
             <Label>Content</Label>
             <Textarea name="content" required placeholder="content" />
           </div>
-          <div className="flex flex-col gap-2">
+
+          {/* Media uploads (each optional) */}
+          <div className="flex flex-col gap-4">
+            {/* Make sure your UploadImageField does NOT hard-block submit if empty */}
             <UploadImageField />
+            <UploadVideoField />
+            <UploadAudioField />
           </div>
+
+          {/* Client guard enforces: at least one of imageUrl/videoUrl/audioUrl */}
+          <MediaAtLeastOneGuard formId="create-post-form" />
+
           <SubmitButton />
         </form>
       </CardContent>

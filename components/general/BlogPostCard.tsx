@@ -6,7 +6,9 @@ interface IappProps {
     id: string;
     title: string;
     content: string;
-    imageUrl: string; // may be ""
+    imageUrl: string | null; // now optional
+    videoUrl?: string | null; // optional
+    audioUrl?: string | null; // optional
     authorId: string;
     authorName: string;
     authorImage: string; // may be ""
@@ -28,22 +30,58 @@ function initials(name: string) {
 
 export function BlogPostCard({ data }: IappProps) {
   const hasCover = !!data.imageUrl && data.imageUrl.trim() !== "";
+  const hasVideo = !!data.videoUrl && data.videoUrl.trim() !== "";
+  const hasAudio = !!data.audioUrl && data.audioUrl.trim() !== "";
   const hasAvatar = !!data.authorImage && data.authorImage.trim() !== "";
 
   return (
     <div className="group relative overflow-hidden rounded-lg border-zinc-200 bg-white shadow-md transition-all hover:shadow-lg">
       <Link href={`/post/${data.id}`} className="block h-full w-full">
+        {/* MEDIA BLOCK */}
         <div className="relative h-64 w-full overflow-hidden">
           {hasCover ? (
             <Image
-              src={data.imageUrl}
+              src={data.imageUrl!}
               alt={data.title || "blog image"}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 33vw"
+              priority={false}
             />
+          ) : hasVideo ? (
+            <video
+              src={data.videoUrl!}
+              className="absolute inset-0 h-full w-full object-cover"
+              controls
+              preload="metadata"
+            />
+          ) : hasAudio ? (
+            <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center bg-zinc-100 p-4">
+              {/* simple audio glyph */}
+              <svg
+                aria-hidden="true"
+                className="mb-3 h-10 w-10 text-zinc-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+              <audio
+                src={data.audioUrl!}
+                controls
+                className="w-full"
+                preload="metadata"
+              />
+            </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 text-zinc-400">
-              {/* simple camera/image icon */}
+              {/* image placeholder */}
               <svg
                 aria-hidden="true"
                 className="h-10 w-10"
@@ -62,6 +100,7 @@ export function BlogPostCard({ data }: IappProps) {
           )}
         </div>
 
+        {/* CONTENT */}
         <div className="p-4">
           <h3 className="mb-2 text-lg font-semibold text-zinc-900">
             {data.title}
@@ -79,6 +118,7 @@ export function BlogPostCard({ data }: IappProps) {
                     alt={data.authorName}
                     fill
                     className="object-cover"
+                    sizes="32px"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-zinc-200 text-[10px] font-semibold text-zinc-700">
