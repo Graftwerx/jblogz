@@ -9,6 +9,7 @@ import {
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { buttonVariants } from "../ui/button";
 import Image from "next/image";
+import { ModeToggle } from "../ModeToggle";
 
 export async function Navbar() {
   const { getUser } = getKindeServerSession();
@@ -18,7 +19,7 @@ export async function Navbar() {
       <div className="flex items-center gap-12">
         {" "}
         <Link href={"/"}>
-          <Image src={"/gistR3.png"} alt="logo" height={48} width={64}></Image>
+          <Image src={"/gistR3a.png"} alt="logo" height={48} width={96}></Image>
         </Link>
         {/* <Link href={"/"}>
           {" "}
@@ -43,25 +44,28 @@ export async function Navbar() {
           </Link>
         </div>
       </div>
-      {user ? (
-        <div className="flex items-center gap-4">
-          <p>{user.given_name}</p>
-          <LogoutLink className={buttonVariants({ variant: "default" })}>
-            logout
-          </LogoutLink>
-        </div>
-      ) : (
-        <div className="flex items-center gap-4">
-          <LoginLink className={buttonVariants({ variant: "default" })}>
-            {" "}
-            login
-          </LoginLink>
-          <RegisterLink className={buttonVariants({ variant: "secondary" })}>
-            {" "}
-            sign up
-          </RegisterLink>
-        </div>
-      )}
+      <div className="flex items-center gap-4">
+        <ModeToggle />
+        {user ? (
+          <div className="flex items-center gap-4">
+            <p>{user.given_name}</p>
+            <LogoutLink className={buttonVariants({ variant: "default" })}>
+              logout
+            </LogoutLink>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <LoginLink className={buttonVariants({ variant: "default" })}>
+              {" "}
+              login
+            </LoginLink>
+            <RegisterLink className={buttonVariants({ variant: "secondary" })}>
+              {" "}
+              sign up
+            </RegisterLink>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }
