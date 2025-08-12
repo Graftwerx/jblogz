@@ -1,4 +1,4 @@
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -8,29 +8,26 @@ import {
 } from "@kinde-oss/kinde-auth-nextjs/components";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { buttonVariants } from "../ui/button";
+import Image from "next/image";
 
 export async function Navbar() {
   const { getUser } = getKindeServerSession();
   const user = await getUser();
   return (
     <nav className="py-5 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-12">
+        {" "}
         <Link href={"/"}>
-          <Image
-            src={"/officialflag.png"}
-            alt="logo"
-            height={36}
-            width={36}
-          ></Image>
+          <Image src={"/gistR3.png"} alt="logo" height={48} width={64}></Image>
         </Link>
-        <Link href={"/"}>
+        {/* <Link href={"/"}>
           {" "}
           <h1 className="text-3xl font-semibold">
-            <span className="text-red-700">eeb</span>o
-            <span className="text-yellow-400">b</span>l
-            <span className="text-green-700">ogs</span>
+            <span className="text-red-700">g</span>i
+            <span className="text-yellow-400">s</span>t
+            <span className="text-green-700">R</span>
           </h1>
-        </Link>
+        </Link> */}
         <div className="hidden sm:flex items-center gap-6">
           <Link
             href={"/"}
