@@ -44,8 +44,8 @@ export default function CreateBlogPage() {
           <div className="flex flex-col gap-4">
             {/* Make sure your UploadImageField does NOT hard-block submit if empty */}
             <UploadImageField enforce={false} />
-            <UploadVideoField />
-            <UploadAudioField />
+            <UploadVideoField enforce={false} />
+            <UploadAudioField enforce={false} />
           </div>
 
           {/* Client guard enforces: at least one of imageUrl/videoUrl/audioUrl */}

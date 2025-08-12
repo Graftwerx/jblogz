@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import SearchBar from "@/components/general/SearchBar";
 
 // ---- Data ----
+// ---- Data ----
 async function getData(q?: string) {
   const query = (q ?? "").trim();
   const terms = query.split(/\s+/).filter(Boolean);
@@ -15,7 +16,6 @@ async function getData(q?: string) {
           OR: [
             { title: { contains: query, mode: "insensitive" } },
             { authorName: { contains: query, mode: "insensitive" } },
-            // Require all terms to appear somewhere in content (keyword-ish search)
             {
               AND: terms.map((t) => ({
                 content: { contains: t, mode: "insensitive" },
@@ -29,6 +29,8 @@ async function getData(q?: string) {
       title: true,
       content: true,
       imageUrl: true,
+      videoUrl: true, // 👈 add this
+      audioUrl: true, // 👈 and this
       authorImage: true,
       authorName: true,
       createdAt: true,
