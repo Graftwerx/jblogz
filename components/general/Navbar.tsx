@@ -1,3 +1,4 @@
+// components/layout/Navbar.tsx
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,7 +15,6 @@ export async function Navbar() {
   const { getUser } = getKindeServerSession();
   const authUser = await getUser();
 
-  // look up our local User row
   let handle: string | null = null;
   if (authUser) {
     const dbUser = await prisma.user.findUnique({
@@ -27,31 +27,44 @@ export async function Navbar() {
   return (
     <nav className="py-5 flex items-center justify-between">
       <div className="flex items-center gap-12">
-        <Link href={"/"}>
-          <Image src={"/gistR3a.png"} alt="logo" height={48} width={96} />
+        <Link href="/">
+          <Image src="/gistR3a.png" alt="logo" height={48} width={96} />
         </Link>
+
         <div className="hidden sm:flex items-center gap-6">
           <Link
-            href={"/"}
+            href="/"
             className="text-sm font-medium hover:text-green-500 transition-colors"
           >
             home
           </Link>
-          <Link
-            href={"/dashboard"}
-            className="text-sm font-medium hover:text-green-500 transition-colors"
-          >
-            dashboard
-          </Link>
+
+          {/* Only show dashboard to authenticated users */}
+          {authUser && (
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium hover:text-green-500 transition-colors"
+            >
+              dashboard
+            </Link>
+          )}
         </div>
       </div>
 
       <div className="flex items-center gap-4">
         <ModeToggle />
+
         {authUser ? (
           <div className="flex items-center gap-4">
-            {/* prefer handle if set, else fallback to Kinde name */}
-            <p>@{handle ?? authUser.given_name}</p>
+            {/* Make the handle link to the account page */}
+            <Link
+              href="/settings/account"
+              className="text-sm font-medium hover:underline"
+              title="Account settings"
+            >
+              {handle ? `@${handle}` : authUser.given_name}
+            </Link>
+
             <LogoutLink className={buttonVariants({ variant: "default" })}>
               logout
             </LogoutLink>

@@ -6,6 +6,7 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import UpdatedToast from "@/components/system/UpdatedToast";
 
 async function getPosts(userId: string) {
   const data = await prisma.blogPost.findMany({
@@ -67,6 +68,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Profile header */}
+      <UpdatedToast />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Image
