@@ -91,7 +91,7 @@ export function FavoriteButton({
         onClick={toggle}
         disabled={pending}
         className={`inline-flex items-center gap-2 rounded-2xl border border-gray-200 px-3 py-2 text-sm shadow-sm disabled:opacity-60 ${
-          isFav ? "bg-yellow-50 border-yellow-200" : "hover:bg-gray-50"
+          isFav ? "bg-green-500 border-zinc-200" : "hover:bg-gray-50"
         }`}
       >
         {isFav ? (
