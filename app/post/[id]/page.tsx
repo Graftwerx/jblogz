@@ -8,11 +8,10 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { deletePost } from "@/app/actions";
 import { DeleteButton } from "@/components/general/DeleteButton";
 import Interactions from "@/components/post/Interactions";
+import FollowButton from "@/components/user/FollowButton"; // ⬅️ add
 
 async function getData(id: string) {
-  const data = await prisma.blogPost.findUnique({
-    where: { id },
-  });
+  const data = await prisma.blogPost.findUnique({ where: { id } });
   if (!data) return null;
   return data;
 }
@@ -24,7 +23,7 @@ export default async function Page({ params }: { params: Params }) {
   const data = await getData(id);
   if (!data) return notFound();
 
-  // fetch author's handle from your User table
+  // fetch author's handle from User table
   const dbAuthor = await prisma.user.findUnique({
     where: { id: data.authorId },
     select: { handle: true },
@@ -33,7 +32,22 @@ export default async function Page({ params }: { params: Params }) {
 
   const { getUser } = getKindeServerSession();
   const user = await getUser();
-  const isAuthor = !!user && user.id === data.authorId;
+  const isAuthenticated = !!user;
+  const isAuthor = isAuthenticated && user!.id === data.authorId;
+
+  // server-compute initial follow state to avoid UI flicker
+  const initialIsFollowing =
+    isAuthenticated && !isAuthor
+      ? !!(await prisma.follow.findUnique({
+          where: {
+            followerId_followingId: {
+              followerId: user!.id,
+              followingId: data.authorId,
+            },
+          },
+          select: { followerId: true },
+        }))
+      : false;
 
   async function onDelete() {
     "use server";
@@ -64,34 +78,61 @@ export default async function Page({ params }: { params: Params }) {
 
       <Card className="mt-6">
         <CardContent className="p-0">
-          <div className="flex items-center gap-3 px-6 py-4">
-            {data.authorImage && (
-              <Image
-                src={data.authorImage}
-                alt={data.authorName}
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-            )}
-            <div className="flex flex-col">
-              {authorHandle ? (
-                <Link
-                  href={`/u/${authorHandle}`}
-                  className="font-medium hover:underline"
-                >
-                  @{authorHandle}
-                </Link>
+          {/* Header row: left = author, right = actions */}
+          <div className="flex items-center justify-between px-6 py-4">
+            {/* left: avatar + handle/name + date */}
+            <div className="flex items-center gap-3">
+              {data.authorImage ? (
+                <Image
+                  src={data.authorImage}
+                  alt={data.authorName}
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
               ) : (
-                <span className="font-medium">{data.authorName}</span>
+                <div className="h-10 w-10 rounded-full bg-muted" />
               )}
 
-              <span className="text-sm text-gray-500">
-                {new Date(data.createdAt).toLocaleDateString("en-GB")}
-              </span>
+              <div className="flex flex-col">
+                {authorHandle ? (
+                  <Link
+                    href={`/u/${authorHandle}`}
+                    className="font-medium hover:underline"
+                  >
+                    @{authorHandle}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{data.authorName}</span>
+                )}
+
+                <span className="text-sm text-gray-500">
+                  {new Date(data.createdAt).toLocaleDateString("en-GB")}
+                </span>
+              </div>
+            </div>
+
+            {/* right: actions (Follow now; Share/Favorite placeholders later) */}
+            <div className="flex bg-green-600 items-center gap-2">
+              {!isAuthor && (
+                <FollowButton
+                  targetUserId={data.authorId}
+                  initialIsFollowing={initialIsFollowing}
+                  isAuthenticated={isAuthenticated}
+                  revalidate={[
+                    `/post/${id}`,
+                    authorHandle ? `/u/${authorHandle}` : "/",
+                  ]}
+                />
+              )}
+
+              {/* Future: Share & Favorite buttons go here */}
+              {/* <ShareButton postId={id} /> */}
+              {/* <FavoriteButton postId={id} /> */}
             </div>
           </div>
 
+          {/* Media */}
           {data.imageUrl && (
             <div className="relative h-64 w-full">
               <Image
@@ -126,6 +167,7 @@ export default async function Page({ params }: { params: Params }) {
             </div>
           )}
 
+          {/* Body */}
           <div className="px-6 py-4">
             <h1 className="mb-4 text-2xl font-bold">{data.title}</h1>
             <p className="whitespace-pre-line">{data.content}</p>
