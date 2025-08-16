@@ -8,6 +8,7 @@ export default withAuth(
   {
     publicPaths: [
       "/",
+      "/post/[id]",
       "/api/uploadthing",
       "/api/uploadthing/:path*", // allow the POST + internal callbacks
       "/api/auth/:path*",        // kinde auth endpoints too

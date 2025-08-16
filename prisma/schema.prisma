@@ -31,6 +31,10 @@ model BlogPost {
   // --- new, optional convenience relations ---
   comments Comment[]
   likes    PostLike[]
+
+  Activity Activity[]
+
+  User User[]
 }
 
 // --- NEW: post likes (one like per user per post) ---
@@ -41,6 +45,7 @@ model PostLike {
   createdAt DateTime @default(now())
 
   post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User User[]
 
   @@unique([postId, userId]) // prevents double-like
   @@index([postId])
@@ -64,7 +69,9 @@ model Comment {
   parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies Comment[] @relation("CommentReplies")
 
-  likes CommentLike[]
+  likes    CommentLike[]
+  Activity Activity[]
+  User     User[]
 
   // helpful indexes
   @@index([postId, parentId, createdAt])
@@ -79,8 +86,73 @@ model CommentLike {
   createdAt DateTime @default(now())
 
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  User    User[]
 
   @@unique([commentId, userId]) // prevents double-like
   @@index([commentId])
   @@index([userId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+enum ActivityType {
+  POST_CREATED
+  POST_LIKED
+  COMMENT_CREATED
+  COMMENT_LIKED
+  USER_FOLLOWED
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  actorId   String // who did it (userId)
+  type      ActivityType
+  createdAt DateTime     @default(now())
+
+  // optional targets — use what applies per row
+  postId       String?
+  commentId    String?
+  targetUserId String? // e.g. for USER_FOLLOWED
+
+  // Keep FKs where you already have models; omit User FK to stay consistent
+  post    BlogPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  User    User[]    @relation("ActorActivities")
+
+  @@index([actorId, createdAt])
+  @@index([type, createdAt])
+  @@index([postId])
+  @@index([commentId])
+  @@index([targetUserId])
+}
+
+model User {
+  id        String   @id // Kinde user ID
+  email     String?  @unique
+  handle    String   @unique // @username
+  name      String?
+  image     String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts        BlogPost[]
+  comments     Comment[]
+  postLikes    PostLike[]
+  commentLikes CommentLike[]
+  following    Follow[]      @relation("Following")
+  followers    Follow[]      @relation("Followers")
+  activities   Activity[]    @relation("ActorActivities")
 }
