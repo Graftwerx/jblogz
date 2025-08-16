@@ -3,6 +3,7 @@
 import { useTransition, useState } from "react";
 import { followUser, unfollowUser } from "@/app/actions/follow";
 import { LoginLink } from "@kinde-oss/kinde-auth-nextjs/components";
+import { Button } from "../ui/button";
 
 type Props = {
   targetUserId: string;
@@ -23,9 +24,9 @@ export default function FollowButton({
   if (!isAuthenticated) {
     return (
       <LoginLink>
-        <button className="rounded-md border px-3 py-1.5 text-sm">
+        <Button className="rounded-md border px-3 py-1.5 text-sm">
           Follow
-        </button>
+        </Button>
       </LoginLink>
     );
   }
@@ -47,7 +48,7 @@ export default function FollowButton({
     });
 
   return (
-    <button
+    <Button
       onClick={onClick}
       disabled={pending}
       className={`rounded-md px-3 py-1.5 text-sm ${
@@ -56,6 +57,6 @@ export default function FollowButton({
       aria-pressed={isFollowingState}
     >
       {pending ? "…" : isFollowingState ? "Unfollow" : "Follow"}
-    </button>
+    </Button>
   );
 }

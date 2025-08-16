@@ -113,7 +113,7 @@ export default async function Page({ params }: { params: Params }) {
             </div>
 
             {/* right: actions (Follow now; Share/Favorite placeholders later) */}
-            <div className="flex bg-green-600 items-center gap-2">
+            <div className="flex items-center gap-2">
               {!isAuthor && (
                 <FollowButton
                   targetUserId={data.authorId}

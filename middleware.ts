@@ -1,74 +1,59 @@
-import { withAuth } from "@kinde-oss/kinde-auth-nextjs/middleware";
+// middleware.ts
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-// Keep your public paths the same + ensure onboarding + the status API are public
-const PUBLIC_PATHS = [
-  "/",                 // home
-  "/posts",            // if you have it
-  "/post/[id]",         // post detail (singular)
-  "/onboarding/handle",
+const PUBLIC_PREFIXES = [
+  "/",                  // home
+  "/posts",             // listing (if you have it)
+  "/post/",             // ANY /post/[id]
+  "/u/",                // user profiles
+  "/onboarding/handle", // onboarding page itself
+  "/api/handle-status", // our status probe (must stay public)
   "/api/uploadthing",
-  "/api/uploadthing/:path*",
-  "/api/auth/:path*",
-  "/api/handle-status", // <-- our new status endpoint
+  "/api/auth/",         // Kinde auth endpoints
 ];
 
-// Helper: test if a path matches our simple patterns
-function isPublicPath(pathname: string) {
-  if (PUBLIC_PATHS.includes(pathname)) return true;
-  // match "/post/:id"
-  if (/^\/post\/[^/]+$/.test(pathname)) return true;
-  // match any "/api/uploadthing/*"
-  if (pathname.startsWith("/api/uploadthing/")) return true;
-  // auth endpoints
-  if (pathname.startsWith("/api/auth/")) return true;
-  return false;
+function isPublic(pathname: string) {
+  if (pathname === "/") return true;
+  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-export default withAuth(
-  async function middleware(req: NextRequest) {
-    const { pathname, search } = req.nextUrl;
-    // Never trap the onboarding page or any public path
-    if (isPublicPath(pathname)) {
-      return NextResponse.next();
-    }
+export async function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
 
-    // Ask API (with cookies) whether the viewer needs to pick a handle
-    // IMPORTANT: Use absolute URL and forward cookies for session
-    const base = req.nextUrl.origin;
-    const res = await fetch(`${base}/api/handle-status`, {
-      headers: { cookie: req.headers.get("cookie") ?? "" },
-      // Avoid caching this check
-      cache: "no-store",
-    });
-
-    if (res.ok) {
-      const data = (await res.json()) as {
-        isAuthenticated: boolean;
-        needsHandle: boolean;
-      };
-
-      if (data.isAuthenticated && data.needsHandle) {
-        // Build returnTo (original URL incl. querystring)
-        const returnTo = pathname + (search || "");
-        const url = new URL("/onboarding/handle", req.nextUrl.origin);
-        url.searchParams.set("returnTo", returnTo);
-        return NextResponse.redirect(url);
-      }
-    }
-
-    // Otherwise, continue as usual
+  // 1) Always allow public pages — NEVER force login
+  if (isPublic(pathname)) {
     return NextResponse.next();
-  },
-  {
-    publicPaths: PUBLIC_PATHS,
   }
-);
+
+  // 2) For non-public pages, only nudge *authenticated users* without a real handle.
+  //    Ask our Node API which can use Prisma.
+  const res = await fetch(`${req.nextUrl.origin}/api/handle-status`, {
+    headers: { cookie: req.headers.get("cookie") ?? "" },
+    cache: "no-store",
+  });
+
+  if (res.ok) {
+    const data = (await res.json()) as {
+      isAuthenticated: boolean;
+      needsHandle: boolean;
+    };
+
+    if (data.isAuthenticated && data.needsHandle) {
+      const url = new URL("/onboarding/handle", req.nextUrl.origin);
+      url.searchParams.set("returnTo", pathname + (search || ""));
+      return NextResponse.redirect(url);
+    }
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
-    // your existing matcher; keeps _next/assets skipped
+    // keep Next internals & static files excluded
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
   ],
 };
+
+
