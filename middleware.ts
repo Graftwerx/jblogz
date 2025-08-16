@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   "/api/handle-status", // our status probe (must stay public)
   "/api/uploadthing",
   "/api/auth/",         // Kinde auth endpoints
+  "/api/favorites",
 ];
 
 function isPublic(pathname: string) {

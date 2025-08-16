@@ -8,7 +8,8 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { deletePost } from "@/app/actions";
 import { DeleteButton } from "@/components/general/DeleteButton";
 import Interactions from "@/components/post/Interactions";
-import FollowButton from "@/components/user/FollowButton"; // ⬅️ add
+import FollowButton from "@/components/user/FollowButton";
+import { MessageActions } from "@/components/MessageActions";
 
 async function getData(id: string) {
   const data = await prisma.blogPost.findUnique({ where: { id } });
@@ -48,6 +49,18 @@ export default async function Page({ params }: { params: Params }) {
           select: { followerId: true },
         }))
       : false;
+
+  // ⭐ server-compute initial favorite state + count (SSR-safe hydration)
+  const initialIsFavorited = isAuthenticated
+    ? !!(await prisma.favorite.findUnique({
+        where: { userId_postId: { userId: user!.id, postId: id } },
+        select: { userId: true },
+      }))
+    : false;
+
+  const favoriteCount = await prisma.favorite.count({
+    where: { postId: id },
+  });
 
   async function onDelete() {
     "use server";
@@ -112,7 +125,7 @@ export default async function Page({ params }: { params: Params }) {
               </div>
             </div>
 
-            {/* right: actions (Follow now; Share/Favorite placeholders later) */}
+            {/* right: actions (Follow + Share/Favorite) */}
             <div className="flex items-center gap-2">
               {!isAuthor && (
                 <FollowButton
@@ -126,9 +139,18 @@ export default async function Page({ params }: { params: Params }) {
                 />
               )}
 
-              {/* Future: Share & Favorite buttons go here */}
-              {/* <ShareButton postId={id} /> */}
-              {/* <FavoriteButton postId={id} /> */}
+              {/* Share + Favorite (client) */}
+              <MessageActions
+                postId={id}
+                permalink={`/post/${id}`}
+                text={data.title}
+                initialIsFavorited={initialIsFavorited}
+                favoriteCount={favoriteCount}
+                isAuthenticated={!!user}
+                loginUrl={`/api/auth/login?postLoginRedirect=${encodeURIComponent(
+                  `/post/${id}`
+                )}`} // ← string, safe for RSC
+              />
             </div>
           </div>
 

@@ -36,6 +36,8 @@ model User {
   followers          Follow[]      @relation("Followers") // users who follow me
   activities         Activity[]    @relation("ActorActivities") // actions I performed
   targetedActivities Activity[]    @relation("TargetUserActivities") // actions done to me
+
+  Favorite Favorite[]
 }
 
 // ---------- Follow (two relations to User) ----------
@@ -120,6 +122,8 @@ model BlogPost {
 
   // Back-relation to Activity.post (named)
   activities Activity[] @relation("PostActivities")
+
+  Favorite Favorite[]
 }
 
 // ---------- PostLike ----------
@@ -179,4 +183,15 @@ model CommentLike {
   @@unique([commentId, userId]) // prevents double-like
   @@index([commentId])
   @@index([userId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id])
+  post      BlogPost @relation(fields: [postId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId], name: "userId_postId")
 }
