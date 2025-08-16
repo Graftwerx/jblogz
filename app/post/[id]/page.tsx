@@ -13,20 +13,23 @@ async function getData(id: string) {
   const data = await prisma.blogPost.findUnique({
     where: { id },
   });
-  if (!data) {
-    return null;
-  }
+  if (!data) return null;
   return data;
 }
 
 type Params = Promise<{ id: string }>;
 
-export default async function page({ params }: { params: Params }) {
+export default async function Page({ params }: { params: Params }) {
   const { id } = await params;
   const data = await getData(id);
-  if (!data) {
-    return notFound();
-  }
+  if (!data) return notFound();
+
+  // fetch author's handle from your User table
+  const dbAuthor = await prisma.user.findUnique({
+    where: { id: data.authorId },
+    select: { handle: true },
+  });
+  const authorHandle = dbAuthor?.handle ?? null;
 
   const { getUser } = getKindeServerSession();
   const user = await getUser();
@@ -40,12 +43,7 @@ export default async function page({ params }: { params: Params }) {
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between">
-        <Link
-          href={"/"}
-          className={buttonVariants({
-            variant: "secondary",
-          })}
-        >
+        <Link href="/" className={buttonVariants({ variant: "secondary" })}>
           back to posts
         </Link>
 
@@ -77,12 +75,23 @@ export default async function page({ params }: { params: Params }) {
               />
             )}
             <div className="flex flex-col">
-              <span className="font-medium">{data.authorName}</span>
+              {authorHandle ? (
+                <Link
+                  href={`/u/${authorHandle}`}
+                  className="font-medium hover:underline"
+                >
+                  @{authorHandle}
+                </Link>
+              ) : (
+                <span className="font-medium">{data.authorName}</span>
+              )}
+
               <span className="text-sm text-gray-500">
-                {new Date(data.createdAt).toLocaleDateString()}
+                {new Date(data.createdAt).toLocaleDateString("en-GB")}
               </span>
             </div>
           </div>
+
           {data.imageUrl && (
             <div className="relative h-64 w-full">
               <Image
@@ -123,6 +132,7 @@ export default async function page({ params }: { params: Params }) {
           </div>
         </CardContent>
       </Card>
+
       <Interactions postId={id} />
     </div>
   );

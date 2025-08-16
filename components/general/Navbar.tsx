@@ -1,6 +1,5 @@
-// import Image from "next/image";
 import Link from "next/link";
-
+import Image from "next/image";
 import {
   LoginLink,
   LogoutLink,
@@ -8,27 +7,29 @@ import {
 } from "@kinde-oss/kinde-auth-nextjs/components";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { buttonVariants } from "../ui/button";
-import Image from "next/image";
 import { ModeToggle } from "../ModeToggle";
+import { prisma } from "@/lib/prisma";
 
 export async function Navbar() {
   const { getUser } = getKindeServerSession();
-  const user = await getUser();
+  const authUser = await getUser();
+
+  // look up our local User row
+  let handle: string | null = null;
+  if (authUser) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { handle: true },
+    });
+    handle = dbUser?.handle ?? null;
+  }
+
   return (
     <nav className="py-5 flex items-center justify-between">
       <div className="flex items-center gap-12">
-        {" "}
         <Link href={"/"}>
-          <Image src={"/gistR3a.png"} alt="logo" height={48} width={96}></Image>
+          <Image src={"/gistR3a.png"} alt="logo" height={48} width={96} />
         </Link>
-        {/* <Link href={"/"}>
-          {" "}
-          <h1 className="text-3xl font-semibold">
-            <span className="text-red-700">g</span>i
-            <span className="text-yellow-400">s</span>t
-            <span className="text-green-700">R</span>
-          </h1>
-        </Link> */}
         <div className="hidden sm:flex items-center gap-6">
           <Link
             href={"/"}
@@ -44,11 +45,13 @@ export async function Navbar() {
           </Link>
         </div>
       </div>
+
       <div className="flex items-center gap-4">
         <ModeToggle />
-        {user ? (
+        {authUser ? (
           <div className="flex items-center gap-4">
-            <p>{user.given_name}</p>
+            {/* prefer handle if set, else fallback to Kinde name */}
+            <p>@{handle ?? authUser.given_name}</p>
             <LogoutLink className={buttonVariants({ variant: "default" })}>
               logout
             </LogoutLink>
@@ -56,11 +59,9 @@ export async function Navbar() {
         ) : (
           <div className="flex items-center gap-4">
             <LoginLink className={buttonVariants({ variant: "default" })}>
-              {" "}
               login
             </LoginLink>
             <RegisterLink className={buttonVariants({ variant: "secondary" })}>
-              {" "}
               sign up
             </RegisterLink>
           </div>

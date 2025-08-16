@@ -1,10 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-// --- existing ---
+// ----------------------------
+// Prisma: generator & datasource
+// ----------------------------
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,85 +10,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model BlogPost {
-  id          String  @id @default(uuid())
-  title       String
-  content     String
-  imageUrl    String? // <- now optional
-  videoUrl    String? // <- new
-  audioUrl    String? // <- new
-  authorId    String
-  authorName  String
-  authorImage String
+/**
+ * ===========================
+ * NEW & CORE MODELS FIRST
+ * ===========================
+ */
 
+// ---------- User (with handles) ----------
+model User {
+  id        String   @id // Kinde user ID
+  email     String?  @unique
+  handle    String   @unique // @username
+  name      String?
+  image     String?
+  bio       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // --- new, optional convenience relations ---
-  comments Comment[]
-  likes    PostLike[]
-
-  Activity Activity[]
-
-  User User[]
+  // Back-relations
+  posts              BlogPost[]
+  comments           Comment[]
+  postLikes          PostLike[]
+  commentLikes       CommentLike[]
+  following          Follow[]      @relation("Following") // users I follow
+  followers          Follow[]      @relation("Followers") // users who follow me
+  activities         Activity[]    @relation("ActorActivities") // actions I performed
+  targetedActivities Activity[]    @relation("TargetUserActivities") // actions done to me
 }
 
-// --- NEW: post likes (one like per user per post) ---
-model PostLike {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String // from your auth system; no FK if you don't model User here
-  createdAt DateTime @default(now())
-
-  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  User User[]
-
-  @@unique([postId, userId]) // prevents double-like
-  @@index([postId])
-  @@index([userId])
-}
-
-// --- NEW: comments (replies are comments with parentId set) ---
-model Comment {
-  id          String   @id @default(uuid())
-  postId      String
-  authorId    String // signed-in user id
-  content     String
-  authorName  String
-  authorImage String
-  parentId    String? // null = top-level comment; set = reply
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // relations
-  post    BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies Comment[] @relation("CommentReplies")
-
-  likes    CommentLike[]
-  Activity Activity[]
-  User     User[]
-
-  // helpful indexes
-  @@index([postId, parentId, createdAt])
-  @@index([authorId, createdAt])
-}
-
-// --- NEW: comment/reply likes (one like per user per comment) ---
-model CommentLike {
-  id        String   @id @default(uuid())
-  commentId String
-  userId    String // signed-in user id
-  createdAt DateTime @default(now())
-
-  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  User    User[]
-
-  @@unique([commentId, userId]) // prevents double-like
-  @@index([commentId])
-  @@index([userId])
-}
-
+// ---------- Follow (two relations to User) ----------
 model Follow {
   id          String   @id @default(uuid())
   followerId  String
@@ -107,6 +53,7 @@ model Follow {
   @@index([followingId])
 }
 
+// ---------- Activity Types ----------
 enum ActivityType {
   POST_CREATED
   POST_LIKED
@@ -115,21 +62,24 @@ enum ActivityType {
   USER_FOLLOWED
 }
 
+// ---------- Activity (append-only feed) ----------
 model Activity {
   id        String       @id @default(uuid())
-  actorId   String // who did it (userId)
+  actorId   String
   type      ActivityType
   createdAt DateTime     @default(now())
 
-  // optional targets — use what applies per row
+  // Optional targets
   postId       String?
   commentId    String?
-  targetUserId String? // e.g. for USER_FOLLOWED
+  targetUserId String?
 
-  // Keep FKs where you already have models; omit User FK to stay consistent
-  post    BlogPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  User    User[]    @relation("ActorActivities")
+  // Named relations so back-relations can match
+  actor      User  @relation("ActorActivities", fields: [actorId], references: [id], onDelete: Cascade)
+  targetUser User? @relation("TargetUserActivities", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  post    BlogPost? @relation("PostActivities", fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment?  @relation("CommentActivities", fields: [commentId], references: [id], onDelete: Cascade)
 
   @@index([actorId, createdAt])
   @@index([type, createdAt])
@@ -138,21 +88,95 @@ model Activity {
   @@index([targetUserId])
 }
 
-model User {
-  id        String   @id // Kinde user ID
-  email     String?  @unique
-  handle    String   @unique // @username
-  name      String?
-  image     String?
-  bio       String?
+/**
+ * ===========================
+ * EXISTING MODELS (relations updated only)
+ * ===========================
+ */
+
+// ---------- BlogPost ----------
+model BlogPost {
+  id       String  @id @default(uuid())
+  title    String
+  content  String
+  imageUrl String? // optional
+  videoUrl String? // optional
+  audioUrl String? // optional
+
+  // RELATION: author → User FK
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // keep your denormalized fields
+  authorName  String
+  authorImage String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  posts        BlogPost[]
-  comments     Comment[]
-  postLikes    PostLike[]
-  commentLikes CommentLike[]
-  following    Follow[]      @relation("Following")
-  followers    Follow[]      @relation("Followers")
-  activities   Activity[]    @relation("ActorActivities")
+  // convenience relations
+  comments Comment[]
+  likes    PostLike[]
+
+  // Back-relation to Activity.post (named)
+  activities Activity[] @relation("PostActivities")
+}
+
+// ---------- PostLike ----------
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId]) // prevents double-like
+  @@index([postId])
+  @@index([userId])
+}
+
+// ---------- Comment ----------
+model Comment {
+  id          String   @id @default(uuid())
+  postId      String
+  authorId    String
+  content     String
+  authorName  String
+  authorImage String
+  parentId    String? // null = top-level comment; set = reply
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  post    BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  // RELATION: author → User FK
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  likes CommentLike[]
+
+  // Back-relation to Activity.comment (named)
+  activities Activity[] @relation("CommentActivities")
+
+  // helpful indexes
+  @@index([postId, parentId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+// ---------- CommentLike ----------
+model CommentLike {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId]) // prevents double-like
+  @@index([commentId])
+  @@index([userId])
 }
