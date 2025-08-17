@@ -1,3 +1,4 @@
+// components/layout/Navbar.tsx (Server Component)
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,7 +9,8 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { buttonVariants } from "../ui/button";
 import { ModeToggle } from "../ModeToggle";
 import { prisma } from "@/lib/prisma";
-import { UserMenu } from "./UserMenu"; // ⬅️ client subcomponent
+import { UserMenu } from "./UserMenu";
+import { NavLinks } from "./NavLinks"; // ⬅️ client subcomponent for active highlighting
 
 export async function Navbar() {
   const { getUser } = getKindeServerSession();
@@ -24,26 +26,18 @@ export async function Navbar() {
   }
 
   const settingsUrl = "/settings/account";
-  const createPostUrl = "/dashboard/create"; // adjust if your route differs
-  const dashboardUrl = "/dashboard";
+  const createPostUrl = "/dashboard/create";
 
   return (
-    <nav className="py-5 flex items-center justify-between">
+    <nav className="flex items-center justify-between py-5">
       <div className="flex items-center gap-12">
         <Link href="/">
           <Image src="/gistR3a.png" alt="logo" height={48} width={96} />
         </Link>
 
-        {/* Primary nav: hide "home" for unauthenticated; keep Dashboard for authed */}
-        <div className="hidden sm:flex items-center gap-6">
-          {authUser && (
-            <Link
-              href={dashboardUrl}
-              className="text-sm font-medium hover:text-green-500 transition-colors"
-            >
-              dashboard
-            </Link>
-          )}
+        {/* Primary nav */}
+        <div className="hidden items-center gap-6 sm:flex">
+          <NavLinks isAuthed={!!authUser} />
         </div>
       </div>
 
