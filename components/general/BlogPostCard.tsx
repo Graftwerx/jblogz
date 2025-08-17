@@ -16,6 +16,7 @@ interface IappProps {
     updatedAt: Date;
   };
 }
+export type BlogPostCardData = IappProps["data"];
 
 function initials(name: string) {
   return (

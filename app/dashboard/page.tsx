@@ -1,5 +1,4 @@
 // app/dashboard/page.tsx
-import { BlogPostCard } from "@/components/general/BlogPostCard";
 import { buttonVariants } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
@@ -7,8 +6,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import UpdatedToast from "@/components/system/UpdatedToast";
+import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
+import type { BlogPostCardData } from "@/components/general/BlogPostCard";
 
-async function getPosts(userId: string) {
+// ——— Queries ———
+async function getMyPosts(userId: string): Promise<BlogPostCardData[]> {
   const data = await prisma.blogPost.findMany({
     where: { authorId: userId },
     orderBy: { createdAt: "desc" },
@@ -27,7 +29,6 @@ async function getPosts(userId: string) {
     },
   });
 
-  // normalize optional media fields for the card component
   return data.map((p) => ({
     ...p,
     imageUrl: p.imageUrl ?? null,
@@ -36,20 +37,140 @@ async function getPosts(userId: string) {
   }));
 }
 
+async function getFavoritesFeed(userId: string): Promise<BlogPostCardData[]> {
+  const favs = await prisma.favorite.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      createdAt: true,
+      post: {
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          imageUrl: true,
+          videoUrl: true,
+          audioUrl: true,
+          authorId: true,
+          authorName: true,
+          authorImage: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
+  });
+
+  return favs.map((f) => ({
+    ...f.post,
+    imageUrl: f.post.imageUrl ?? null,
+    videoUrl: f.post.videoUrl ?? null,
+    audioUrl: f.post.audioUrl ?? null,
+  }));
+}
+
+async function getFollowingFeed(userId: string): Promise<BlogPostCardData[]> {
+  const following = await prisma.follow.findMany({
+    where: { followerId: userId },
+    select: { followingId: true },
+  });
+
+  const ids = following.map((f) => f.followingId);
+  if (ids.length === 0) return [];
+
+  const posts = await prisma.blogPost.findMany({
+    where: { authorId: { in: ids } },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      imageUrl: true,
+      videoUrl: true,
+      audioUrl: true,
+      authorId: true,
+      authorName: true,
+      authorImage: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return posts.map((p) => ({
+    ...p,
+    imageUrl: p.imageUrl ?? null,
+    videoUrl: p.videoUrl ?? null,
+    audioUrl: p.audioUrl ?? null,
+  }));
+}
+
+// Activity structure matches DashboardTabs expectations (favorites on my posts, new followers, my favorites).
+async function getActivity(userId: string) {
+  const [favOnMyPosts, newFollowers, myFavs] = await Promise.all([
+    prisma.favorite.findMany({
+      where: { post: { authorId: userId } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        createdAt: true,
+        user: { select: { id: true, name: true, image: true, handle: true } },
+        post: { select: { id: true, title: true } },
+      },
+    }),
+    prisma.follow.findMany({
+      where: { followingId: userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        createdAt: true,
+        follower: {
+          select: { id: true, name: true, image: true, handle: true },
+        },
+      },
+    }),
+    prisma.favorite.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        createdAt: true,
+        post: { select: { id: true, title: true } },
+      },
+    }),
+  ]);
+
+  return {
+    notifications: favOnMyPosts, // “X favorited your post Y”
+    newFollowers, // “X followed you”
+    myActions: myFavs, // “You favorited Y”
+  };
+}
+
+// ——— Page ———
 export default async function DashboardPage() {
   const { getUser } = getKindeServerSession();
   const authUser = await getUser();
   if (!authUser) redirect("/");
 
-  // fetch everything in parallel
-  const [dbUser, posts, followersCount, followingCount] = await Promise.all([
+  const [
+    dbUser,
+    posts,
+    followersCount,
+    followingCount,
+    favoritesFeed,
+    followingFeed,
+    activity,
+  ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: authUser.id },
       select: { handle: true, image: true, name: true },
     }),
-    getPosts(authUser.id),
+    getMyPosts(authUser.id),
     prisma.follow.count({ where: { followingId: authUser.id } }), // people who follow me
     prisma.follow.count({ where: { followerId: authUser.id } }), // people I follow
+    getFavoritesFeed(authUser.id),
+    getFollowingFeed(authUser.id),
+    getActivity(authUser.id),
   ]);
 
   // avatar fallback to latest post's authorImage, then default
@@ -67,8 +188,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Profile header */}
       <UpdatedToast />
+
+      {/* Profile header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Image
@@ -99,13 +221,13 @@ export default async function DashboardPage() {
         {handle ? (
           <Link
             href={`/u/${handle}/followers`}
-            className="rounded-lg  p-3 hover:bg-muted/40"
+            className="rounded-lg p-3 hover:bg-muted/40"
           >
             <div className="text-xs text-muted-foreground">followers</div>
             <div className="text-xl font-semibold">{followersCount}</div>
           </Link>
         ) : (
-          <div className="rounded-lg  p-3">
+          <div className="rounded-lg p-3">
             <div className="text-xs text-muted-foreground">followers</div>
             <div className="text-xl font-semibold">{followersCount}</div>
           </div>
@@ -115,13 +237,13 @@ export default async function DashboardPage() {
         {handle ? (
           <Link
             href={`/u/${handle}/following`}
-            className="rounded-lg  p-3 hover:bg-muted/40"
+            className="rounded-lg p-3 hover:bg-muted/40"
           >
             <div className="text-xs text-muted-foreground">following</div>
             <div className="text-xl font-semibold">{followingCount}</div>
           </Link>
         ) : (
-          <div className="rounded-lg  p-3">
+          <div className="rounded-lg p-3">
             <div className="text-xs text-muted-foreground">following</div>
             <div className="text-xl font-semibold">{followingCount}</div>
           </div>
@@ -134,22 +256,13 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Articles header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-medium">your blog articles</h2>
-      </div>
-
-      {/* Articles grid */}
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {posts.map((item) => (
-          <BlogPostCard data={item} key={item.id} />
-        ))}
-        {posts.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            You haven’t published anything yet.
-          </p>
-        )}
-      </section>
+      {/* Tabs (replaces “your blog articles”) */}
+      <DashboardTabs
+        myPosts={posts}
+        favoritesFeed={favoritesFeed}
+        followingFeed={followingFeed}
+        activity={activity}
+      />
     </div>
   );
 }
