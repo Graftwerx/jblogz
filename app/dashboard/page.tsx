@@ -1,5 +1,6 @@
 // app/dashboard/page.tsx
 import { buttonVariants } from "@/components/ui/button";
+
 import { prisma } from "@/lib/prisma";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import Link from "next/link";
@@ -7,7 +8,22 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import UpdatedToast from "@/components/system/UpdatedToast";
 import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
-import type { BlogPostCardData } from "@/components/general/BlogPostCard";
+import type { ReactElement } from "react";
+
+// Local type matching BlogPostCard's expected data
+type BlogPostCardData = {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  audioUrl: string | null;
+  authorId: string;
+  authorName: string;
+  authorImage: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 // ——— Queries ———
 async function getMyPosts(userId: string): Promise<BlogPostCardData[]> {
@@ -74,7 +90,6 @@ async function getFollowingFeed(userId: string): Promise<BlogPostCardData[]> {
     where: { followerId: userId },
     select: { followingId: true },
   });
-
   const ids = following.map((f) => f.followingId);
   if (ids.length === 0) return [];
 
@@ -104,7 +119,7 @@ async function getFollowingFeed(userId: string): Promise<BlogPostCardData[]> {
   }));
 }
 
-// Activity structure matches DashboardTabs expectations (favorites on my posts, new followers, my favorites).
+// Activity structure (favorites on my posts, new followers, my favorites)
 async function getActivity(userId: string) {
   const [favOnMyPosts, newFollowers, myFavs] = await Promise.all([
     prisma.favorite.findMany({
@@ -140,14 +155,48 @@ async function getActivity(userId: string) {
   ]);
 
   return {
-    notifications: favOnMyPosts, // “X favorited your post Y”
-    newFollowers, // “X followed you”
-    myActions: myFavs, // “You favorited Y”
+    notifications: favOnMyPosts,
+    newFollowers,
+    myActions: myFavs,
   };
 }
 
+// Messages (requests + conversations)
+async function getPendingRequests(userId: string) {
+  return prisma.messageRequest.findMany({
+    where: { toUserId: userId, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      createdAt: true,
+      fromUser: { select: { id: true, handle: true, name: true, image: true } },
+    },
+  });
+}
+
+async function getConversations(userId: string) {
+  return prisma.conversation.findMany({
+    where: { state: "ACTIVE", participants: { some: { userId } } },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      updatedAt: true,
+      participants: {
+        select: {
+          user: { select: { id: true, handle: true, name: true, image: true } },
+        },
+      },
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { id: true, body: true, createdAt: true, senderId: true },
+      },
+    },
+  });
+}
+
 // ——— Page ———
-export default async function DashboardPage() {
+export default async function DashboardPage(): Promise<ReactElement> {
   const { getUser } = getKindeServerSession();
   const authUser = await getUser();
   if (!authUser) redirect("/");
@@ -160,17 +209,21 @@ export default async function DashboardPage() {
     favoritesFeed,
     followingFeed,
     activity,
+    requests,
+    conversations,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: authUser.id },
       select: { handle: true, image: true, name: true },
     }),
     getMyPosts(authUser.id),
-    prisma.follow.count({ where: { followingId: authUser.id } }), // people who follow me
-    prisma.follow.count({ where: { followerId: authUser.id } }), // people I follow
+    prisma.follow.count({ where: { followingId: authUser.id } }),
+    prisma.follow.count({ where: { followerId: authUser.id } }),
     getFavoritesFeed(authUser.id),
     getFollowingFeed(authUser.id),
     getActivity(authUser.id),
+    getPendingRequests(authUser.id),
+    getConversations(authUser.id),
   ]);
 
   // avatar fallback to latest post's authorImage, then default
@@ -185,6 +238,7 @@ export default async function DashboardPage() {
   }
 
   const handle = dbUser?.handle ?? null;
+  const pendingCount = requests.length;
 
   return (
     <div className="space-y-8">
@@ -217,7 +271,6 @@ export default async function DashboardPage() {
 
       {/* Stats row */}
       <section className="grid w-full max-w-md grid-cols-3 gap-3">
-        {/* followers */}
         {handle ? (
           <Link
             href={`/u/${handle}/followers`}
@@ -233,7 +286,6 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* following */}
         {handle ? (
           <Link
             href={`/u/${handle}/following`}
@@ -249,19 +301,24 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* posts */}
         <div className="rounded-lg p-3">
           <div className="text-xs text-muted-foreground">posts</div>
           <div className="text-xl font-semibold">{posts.length}</div>
         </div>
       </section>
 
-      {/* Tabs (replaces “your blog articles”) */}
+      {/* Tabs */}
       <DashboardTabs
+        currentUserId={authUser.id}
         myPosts={posts}
         favoritesFeed={favoritesFeed}
         followingFeed={followingFeed}
         activity={activity}
+        messages={{
+          pendingCount,
+          requests,
+          conversations,
+        }}
       />
     </div>
   );

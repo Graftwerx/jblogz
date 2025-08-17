@@ -27,17 +27,30 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Back-relations
+  // Back-relations (existing)
   posts              BlogPost[]
   comments           Comment[]
   postLikes          PostLike[]
   commentLikes       CommentLike[]
   following          Follow[]      @relation("Following") // users I follow
   followers          Follow[]      @relation("Followers") // users who follow me
-  activities         Activity[]    @relation("ActorActivities") // actions I performed
-  targetedActivities Activity[]    @relation("TargetUserActivities") // actions done to me
+  activities         Activity[]    @relation("ActorActivities")
+  targetedActivities Activity[]    @relation("TargetUserActivities")
 
-  Favorite Favorite[]
+  // Favorites
+  favorites Favorite[]
+
+  // Conversations & messages
+  conversationParticipants ConversationParticipant[]
+  messages                 Message[] // back-rel to Message.sender
+
+  // ✅ Distinct back-relations for message requests
+  messageRequestsSent     MessageRequest[] @relation("MessageRequest_fromUser")
+  messageRequestsReceived MessageRequest[] @relation("MessageRequest_toUser")
+
+  // ✅ Distinct back-relations for blocks
+  blocksInitiated Block[] @relation("Block_blocker")
+  blocksReceived  Block[] @relation("Block_blocked")
 }
 
 // ---------- Follow (two relations to User) ----------
@@ -194,4 +207,91 @@ model Favorite {
   createdAt DateTime @default(now())
 
   @@unique([userId, postId], name: "userId_postId")
+}
+
+enum ConversationState {
+  PENDING
+  ACTIVE
+  BLOCKED
+}
+
+enum ParticipantRole {
+  MEMBER
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  state ConversationState @default(PENDING)
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  MessageRequest MessageRequest[]
+}
+
+model ConversationParticipant {
+  id             String          @id @default(cuid())
+  conversationId String
+  userId         String
+  role           ParticipantRole @default(MEMBER)
+  hasMuted       Boolean         @default(false)
+  lastReadAt     DateTime        @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId], name: "conversation_user_unique")
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime  @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+}
+
+model MessageRequest {
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  fromUserId     String
+  toUserId       String
+  conversationId String?
+  status         RequestStatus @default(PENDING)
+
+  // 👇 relation names disambiguate the two User relations
+  fromUser User @relation("MessageRequest_fromUser", fields: [fromUserId], references: [id])
+  toUser   User @relation("MessageRequest_toUser", fields: [toUserId], references: [id])
+
+  // (optional but recommended) define the relation to Conversation
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+
+  @@unique([fromUserId, toUserId], name: "from_to_unique")
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  // 👇 name both relations to User to avoid ambiguity
+  blocker User @relation("Block_blocker", fields: [blockerId], references: [id])
+  blocked User @relation("Block_blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId], name: "blocker_blocked_unique")
 }
