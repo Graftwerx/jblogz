@@ -330,9 +330,14 @@ export default async function AdminReportsPage(ctx: {
 
   return (
     <div className="mx-auto max-w-7xl p-4">
-      <h1 className="mb-4 text-2xl font-semibold">Reports</h1>
-      <ToastFromQuery />
-
+      <div className="flex justify-between px-3">
+        {" "}
+        <h1 className="mb-4 text-2xl font-semibold">Reports</h1>
+        <ToastFromQuery />
+        <Link href="/admin">
+          <Button variant="outline">admin home</Button>
+        </Link>
+      </div>
       {/* Filters */}
       <form className="mb-4 flex flex-wrap items-end gap-3" method="get">
         <div className="flex flex-col">

@@ -10,19 +10,22 @@ import { buttonVariants } from "../ui/button";
 import { ModeToggle } from "../ModeToggle";
 import { prisma } from "@/lib/prisma";
 import { UserMenu } from "./UserMenu";
-import { NavLinks } from "./NavLinks"; // ⬅️ client subcomponent for active highlighting
+import { NavLinks } from "./NavLinks"; // client subcomponent for active highlighting
 
 export async function Navbar() {
   const { getUser } = getKindeServerSession();
   const authUser = await getUser();
 
   let handle: string | null = null;
+  let isAdmin = false;
+
   if (authUser) {
     const dbUser = await prisma.user.findUnique({
       where: { id: authUser.id },
-      select: { handle: true },
+      select: { handle: true, role: true }, // ⬅️ grab role too
     });
     handle = dbUser?.handle ?? null;
+    isAdmin = dbUser?.role === "ADMIN";
   }
 
   const settingsUrl = "/settings/account";
@@ -37,7 +40,7 @@ export async function Navbar() {
 
         {/* Primary nav */}
         <div className="hidden items-center gap-6 sm:flex">
-          <NavLinks isAuthed={!!authUser} />
+          <NavLinks isAuthed={!!authUser} isAdmin={isAdmin} />
         </div>
       </div>
 
