@@ -3,6 +3,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
 
 export default function RequestActions({ requestId }: { requestId: string }) {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function RequestActions({ requestId }: { requestId: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <button
+      <Button
         onClick={() =>
           start(() => post(`/api/messages/request/${requestId}/accept`))
         }
@@ -32,8 +33,8 @@ export default function RequestActions({ requestId }: { requestId: string }) {
         className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-60"
       >
         accept
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={() =>
           start(() => post(`/api/messages/request/${requestId}/decline`))
         }
@@ -41,7 +42,7 @@ export default function RequestActions({ requestId }: { requestId: string }) {
         className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/40 disabled:opacity-60"
       >
         decline
-      </button>
+      </Button>
     </div>
   );
 }

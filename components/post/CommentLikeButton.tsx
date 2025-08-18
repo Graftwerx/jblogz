@@ -1,6 +1,7 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
+import { Button } from "../ui/button";
 
 export default function CommentLikeButton({
   commentId,
@@ -62,7 +63,7 @@ export default function CommentLikeButton({
   }
 
   return (
-    <button
+    <Button
       onClick={toggle}
       disabled={isPending}
       className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
@@ -71,6 +72,6 @@ export default function CommentLikeButton({
     >
       <span>{optimistic.liked ? "❤️" : "🤍"}</span>
       <span>{optimistic.count}</span>
-    </button>
+    </Button>
   );
 }

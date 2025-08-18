@@ -10,9 +10,12 @@ import { DeleteButton } from "@/components/general/DeleteButton";
 import Interactions from "@/components/post/Interactions";
 import FollowButton from "@/components/user/FollowButton";
 import { MessageActions } from "@/components/MessageActions";
+import { FlagButton } from "@/components/moderation/FlagButton";
 
 async function getData(id: string) {
-  const data = await prisma.blogPost.findUnique({ where: { id } });
+  const data = await prisma.blogPost.findUnique({
+    where: { id, hiddenAt: null },
+  });
   if (!data) return null;
   return data;
 }
@@ -138,6 +141,7 @@ export default async function Page({ params }: { params: Params }) {
                   ]}
                 />
               )}
+              <FlagButton targetType="POST" targetId={id} />
 
               {/* Share + Favorite (client) */}
               <MessageActions

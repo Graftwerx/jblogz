@@ -3,6 +3,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
 
 export default function SendMessageBox({
   conversationId,
@@ -35,13 +36,13 @@ export default function SendMessageBox({
         placeholder="Write a message…"
         className="w-full resize-none rounded-md border p-2 text-sm"
       />
-      <button
+      <Button
         onClick={() => start(send)}
         disabled={pending || !text.trim()}
         className="h-10 shrink-0 rounded-md bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
       >
         send
-      </button>
+      </Button>
     </div>
   );
 }

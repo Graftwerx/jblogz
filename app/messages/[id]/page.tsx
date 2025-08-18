@@ -7,7 +7,7 @@ import SendMessageBox from "@/components/messages/SendMessageBox";
 export default async function ThreadPage(
   ctx: { params: Promise<{ id: string }> } // 👈 params is a Promise in Next 15
 ) {
-  const { id } = await ctx.params; // 👈 await it
+  const { id } = await ctx.params;
 
   const { getUser } = getKindeServerSession();
   const user = await getUser();
@@ -34,11 +34,16 @@ export default async function ThreadPage(
   const isMember = convo.participants.some((p) => p.userId === user.id);
   if (!isMember) return notFound();
 
+  // Build display string like "@jbizzle and @agunna"
+  const handles = convo.participants
+    .map((p) => (p.user.handle ? `@${p.user.handle}` : p.user.name || "User"))
+    .join(" and ");
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col p-4">
       <header className="mb-4 border-b pb-3">
-        <div className="text-sm text-muted-foreground">
-          Conversation • {convo.participants.length} participants
+        <div className="text-sm font-medium">
+          Conversation between {handles}
         </div>
       </header>
 

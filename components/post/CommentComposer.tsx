@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
 
 type Props = {
   postId: string;
@@ -63,13 +64,13 @@ export default function CommentComposer({
         onChange={(e) => setValue(e.target.value)}
         disabled={isPending}
       />
-      <button
+      <Button
         onClick={submit}
         disabled={isPending || value.trim().length === 0}
         className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-60"
       >
         Post
-      </button>
+      </Button>
     </div>
   );
 }

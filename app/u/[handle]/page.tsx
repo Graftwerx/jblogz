@@ -32,7 +32,7 @@ async function getUserByHandle(handle: string) {
 
 async function getUserPosts(userId: string): Promise<BlogPostCardData[]> {
   const rows = await prisma.blogPost.findMany({
-    where: { authorId: userId },
+    where: { authorId: userId, hiddenAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

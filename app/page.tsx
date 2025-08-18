@@ -16,6 +16,7 @@ async function getData(q?: string) {
           OR: [
             { title: { contains: query, mode: "insensitive" } },
             { authorName: { contains: query, mode: "insensitive" } },
+            { hiddenAt: null },
             {
               AND: terms.map((t) => ({
                 content: { contains: t, mode: "insensitive" },

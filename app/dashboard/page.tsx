@@ -94,7 +94,7 @@ async function getFollowingFeed(userId: string): Promise<BlogPostCardData[]> {
   if (ids.length === 0) return [];
 
   const posts = await prisma.blogPost.findMany({
-    where: { authorId: { in: ids } },
+    where: { authorId: { in: ids }, hiddenAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

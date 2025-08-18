@@ -3,70 +3,119 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+import { isAdmin } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const { getUser } = getKindeServerSession();
-  const user = await getUser();
-  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+  const viewer = await getUser();
+  if (!viewer) return NextResponse.json({ ok: false }, { status: 401 });
 
-  const { toUserId, body }:{ toUserId?: string; body?: string } = await req.json();
-  if (!toUserId || toUserId === user.id) {
+  const { toUserId, body } = (await req.json()) as {
+    toUserId?: string;
+    body?: string;
+  };
+  if (!toUserId || toUserId === viewer.id) {
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
   }
 
-  // Block checks either direction
+  const admin = await isAdmin(viewer.id);
+
+  // Admins bypass blocks & requests completely
+  if (admin) {
+    // 1) Find existing conversation between admin and target
+    let convo = await prisma.conversation.findFirst({
+      where: {
+        participants: { some: { userId: viewer.id } },
+        AND: { participants: { some: { userId: toUserId } } },
+      },
+      select: { id: true, state: true },
+    });
+
+    // 2) If none, create ACTIVE convo immediately
+    if (!convo) {
+      convo = await prisma.conversation.create({
+        data: {
+          state: "ACTIVE",
+          participants: {
+            createMany: {
+              data: [{ userId: viewer.id }, { userId: toUserId }],
+            },
+          },
+        },
+        select: { id: true, state: true },
+      });
+    } else if (convo.state !== "ACTIVE") {
+      // force ACTIVE if previously pending/blocked
+      await prisma.conversation.update({
+        where: { id: convo.id },
+        data: { state: "ACTIVE" },
+      });
+    }
+
+    // 3) Optional initial message
+    const note = (body ?? "").trim();
+    if (note) {
+      await prisma.message.create({
+        data: { conversationId: convo.id, senderId: viewer.id, body: note },
+      });
+    }
+
+    return NextResponse.json({ ok: true, conversationId: convo.id, status: "ACTIVE" });
+  }
+
+  // ===== Normal users (existing behavior) =====
+
+  // block checks (either direction)
   const blocked = await prisma.block.findFirst({
     where: {
       OR: [
-        { blockerId: user.id, blockedId: toUserId },
-        { blockerId: toUserId, blockedId: user.id },
+        { blockerId: viewer.id, blockedId: toUserId },
+        { blockerId: toUserId, blockedId: viewer.id },
       ],
     },
   });
   if (blocked) return NextResponse.json({ ok: false, error: "BLOCKED" }, { status: 403 });
 
-  // Find an existing conversation between the pair (any state)
+  // Find existing conversation (any state)
   let convo = await prisma.conversation.findFirst({
     where: {
-      participants: { some: { userId: user.id } },
+      participants: { some: { userId: viewer.id } },
       AND: { participants: { some: { userId: toUserId } } },
     },
     select: { id: true, state: true },
   });
 
-  // If none, create a PENDING conversation
+  // If none, create PENDING
   if (!convo) {
     convo = await prisma.conversation.create({
       data: {
         state: "PENDING",
         participants: {
-          createMany: {
-            data: [{ userId: user.id }, { userId: toUserId }],
-          },
+          createMany: { data: [{ userId: viewer.id }, { userId: toUserId }] },
         },
       },
       select: { id: true, state: true },
     });
   }
 
-  // Upsert the MessageRequest (compound unique named "from_to_unique")
-  const reqRecord = await prisma.messageRequest.upsert({
-    where: { from_to_unique: { fromUserId: user.id, toUserId } },
+  // Upsert the request (one per pair)
+  await prisma.messageRequest.upsert({
+    where: { from_to_unique: { fromUserId: viewer.id, toUserId } },
     update: { status: "PENDING", conversationId: convo.id },
-    create: { fromUserId: user.id, toUserId, conversationId: convo.id, status: "PENDING" },
-    select: { id: true, conversationId: true },
+    create: { fromUserId: viewer.id, toUserId, conversationId: convo.id, status: "PENDING" },
   });
 
-  // If user provided a note, save it as the first message (optional)
-  const note = (body || "").trim();
+  // Store the first note as the first message (your chosen behavior)
+  const note = (body ?? "").trim();
   if (note) {
     await prisma.message.create({
-      data: { conversationId: convo.id, senderId: user.id, body: note },
+      data: { conversationId: convo.id, senderId: viewer.id, body: note },
     });
   }
 
   return NextResponse.json({
     ok: true,
-    conversationId: reqRecord.conversationId ?? convo.id,
+    conversationId: convo.id,
+    status: convo.state, // PENDING for non-admin until accepted
   });
 }

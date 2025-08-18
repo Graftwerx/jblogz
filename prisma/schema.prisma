@@ -12,201 +12,15 @@ datasource db {
 
 /**
  * ===========================
- * NEW & CORE MODELS FIRST
+ * ENUMS
  * ===========================
  */
-
-// ---------- User (with handles) ----------
-model User {
-  id        String   @id // Kinde user ID
-  email     String?  @unique
-  handle    String   @unique // @username
-  name      String?
-  image     String?
-  bio       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Back-relations (existing)
-  posts              BlogPost[]
-  comments           Comment[]
-  postLikes          PostLike[]
-  commentLikes       CommentLike[]
-  following          Follow[]      @relation("Following") // users I follow
-  followers          Follow[]      @relation("Followers") // users who follow me
-  activities         Activity[]    @relation("ActorActivities")
-  targetedActivities Activity[]    @relation("TargetUserActivities")
-
-  // Favorites
-  favorites Favorite[]
-
-  // Conversations & messages
-  conversationParticipants ConversationParticipant[]
-  messages                 Message[] // back-rel to Message.sender
-
-  // ✅ Distinct back-relations for message requests
-  messageRequestsSent     MessageRequest[] @relation("MessageRequest_fromUser")
-  messageRequestsReceived MessageRequest[] @relation("MessageRequest_toUser")
-
-  // ✅ Distinct back-relations for blocks
-  blocksInitiated Block[] @relation("Block_blocker")
-  blocksReceived  Block[] @relation("Block_blocked")
-}
-
-// ---------- Follow (two relations to User) ----------
-model Follow {
-  id          String   @id @default(uuid())
-  followerId  String
-  followingId String
-  createdAt   DateTime @default(now())
-
-  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@unique([followerId, followingId])
-  @@index([followerId])
-  @@index([followingId])
-}
-
-// ---------- Activity Types ----------
 enum ActivityType {
   POST_CREATED
   POST_LIKED
   COMMENT_CREATED
   COMMENT_LIKED
   USER_FOLLOWED
-}
-
-// ---------- Activity (append-only feed) ----------
-model Activity {
-  id        String       @id @default(uuid())
-  actorId   String
-  type      ActivityType
-  createdAt DateTime     @default(now())
-
-  // Optional targets
-  postId       String?
-  commentId    String?
-  targetUserId String?
-
-  // Named relations so back-relations can match
-  actor      User  @relation("ActorActivities", fields: [actorId], references: [id], onDelete: Cascade)
-  targetUser User? @relation("TargetUserActivities", fields: [targetUserId], references: [id], onDelete: Cascade)
-
-  post    BlogPost? @relation("PostActivities", fields: [postId], references: [id], onDelete: Cascade)
-  comment Comment?  @relation("CommentActivities", fields: [commentId], references: [id], onDelete: Cascade)
-
-  @@index([actorId, createdAt])
-  @@index([type, createdAt])
-  @@index([postId])
-  @@index([commentId])
-  @@index([targetUserId])
-}
-
-/**
- * ===========================
- * EXISTING MODELS (relations updated only)
- * ===========================
- */
-
-// ---------- BlogPost ----------
-model BlogPost {
-  id       String  @id @default(uuid())
-  title    String
-  content  String
-  imageUrl String? // optional
-  videoUrl String? // optional
-  audioUrl String? // optional
-
-  // RELATION: author → User FK
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  // keep your denormalized fields
-  authorName  String
-  authorImage String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // convenience relations
-  comments Comment[]
-  likes    PostLike[]
-
-  // Back-relation to Activity.post (named)
-  activities Activity[] @relation("PostActivities")
-
-  Favorite Favorite[]
-}
-
-// ---------- PostLike ----------
-model PostLike {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId]) // prevents double-like
-  @@index([postId])
-  @@index([userId])
-}
-
-// ---------- Comment ----------
-model Comment {
-  id          String   @id @default(uuid())
-  postId      String
-  authorId    String
-  content     String
-  authorName  String
-  authorImage String
-  parentId    String? // null = top-level comment; set = reply
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  post    BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies Comment[] @relation("CommentReplies")
-
-  // RELATION: author → User FK
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  likes CommentLike[]
-
-  // Back-relation to Activity.comment (named)
-  activities Activity[] @relation("CommentActivities")
-
-  // helpful indexes
-  @@index([postId, parentId, createdAt])
-  @@index([authorId, createdAt])
-}
-
-// ---------- CommentLike ----------
-model CommentLike {
-  id        String   @id @default(uuid())
-  commentId String
-  userId    String
-  createdAt DateTime @default(now())
-
-  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([commentId, userId]) // prevents double-like
-  @@index([commentId])
-  @@index([userId])
-}
-
-model Favorite {
-  id        String   @id @default(cuid())
-  userId    String
-  postId    String
-  user      User     @relation(fields: [userId], references: [id])
-  post      BlogPost @relation(fields: [postId], references: [id])
-  createdAt DateTime @default(now())
-
-  @@unique([userId, postId], name: "userId_postId")
 }
 
 enum ConversationState {
@@ -225,6 +39,272 @@ enum RequestStatus {
   DECLINED
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  EXPELLED
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  MESSAGE
+  USER
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  HATE
+  NUDITY
+  VIOLENCE
+  SELF_HARM
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  ACTION_TAKEN
+  REJECTED
+}
+
+enum ModerationActionType {
+  HIDE_CONTENT
+  UNHIDE_CONTENT
+  SUSPEND_USER
+  REINSTATE_USER
+  EXPEL_USER
+  DELETE_CONTENT
+}
+
+/**
+ * ===========================
+ * CORE MODELS
+ * ===========================
+ */
+
+// ---------- User ----------
+model User {
+  id        String   @id
+  email     String?  @unique
+  handle    String   @unique
+  name      String?
+  image     String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // auth/role/status
+  role           UserRole   @default(USER)
+  status         UserStatus @default(ACTIVE)
+  suspendedUntil DateTime?
+  expelledAt     DateTime?
+
+  // Back-relations (named to avoid ambiguity)
+  posts       BlogPost[] @relation("AuthorPosts")
+  hiddenPosts BlogPost[] @relation("HiddenByPosts")
+
+  comments       Comment[] @relation("AuthorComments")
+  hiddenComments Comment[] @relation("HiddenByComments")
+
+  messages       Message[] @relation("SenderMessages")
+  hiddenMessages Message[] @relation("HiddenByMessages")
+
+  postLikes    PostLike[]
+  commentLikes CommentLike[]
+
+  following Follow[] @relation("Following")
+  followers Follow[] @relation("Followers")
+
+  activities         Activity[] @relation("ActorActivities")
+  targetedActivities Activity[] @relation("TargetUserActivities")
+
+  favorites Favorite[]
+
+  conversationParticipants ConversationParticipant[]
+
+  // requests & blocks
+  messageRequestsSent     MessageRequest[] @relation("MessageRequest_fromUser")
+  messageRequestsReceived MessageRequest[] @relation("MessageRequest_toUser")
+  blocksInitiated         Block[]          @relation("Block_blocker")
+  blocksReceived          Block[]          @relation("Block_blocked")
+
+  // reports (reporter / resolvedBy / against user)
+  reportsSubmitted Report[] @relation("ReporterReports")
+  reportsResolved  Report[] @relation("ModeratorResolvedReports")
+  reportsAgainstMe Report[] @relation("ReportedUser")
+
+  // moderation actions performed
+  modActions ModerationAction[] @relation("ModeratorActions")
+}
+
+// ---------- Follow ----------
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// ---------- Activity ----------
+model Activity {
+  id        String       @id @default(uuid())
+  actorId   String
+  type      ActivityType
+  createdAt DateTime     @default(now())
+
+  // Optional targets
+  postId       String?
+  commentId    String?
+  targetUserId String?
+
+  actor      User  @relation("ActorActivities", fields: [actorId], references: [id], onDelete: Cascade)
+  targetUser User? @relation("TargetUserActivities", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  post    BlogPost? @relation("PostActivities", fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment?  @relation("CommentActivities", fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, createdAt])
+  @@index([type, createdAt])
+  @@index([postId])
+  @@index([commentId])
+  @@index([targetUserId])
+}
+
+/**
+ * ===========================
+ * BLOG / COMMENTS / FAVORITES
+ * ===========================
+ */
+
+// ---------- BlogPost ----------
+model BlogPost {
+  id       String  @id @default(uuid())
+  title    String
+  content  String
+  imageUrl String?
+  videoUrl String?
+  audioUrl String?
+
+  // author
+  authorId String
+  author   User   @relation("AuthorPosts", fields: [authorId], references: [id], onDelete: Cascade)
+
+  // denormalized
+  authorName  String
+  authorImage String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // moderation (hidden)
+  hiddenAt   DateTime?
+  hiddenById String?
+  hiddenBy   User?     @relation("HiddenByPosts", fields: [hiddenById], references: [id])
+
+  // relations
+  comments    Comment[]
+  likes       PostLike[]
+  activities  Activity[] @relation("PostActivities")
+  favorites   Favorite[]
+  postReports Report[]   @relation("PostReports")
+}
+
+// ---------- PostLike ----------
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+// ---------- Comment ----------
+model Comment {
+  id          String   @id @default(uuid())
+  postId      String
+  authorId    String
+  content     String
+  authorName  String
+  authorImage String
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  post    BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  author User @relation("AuthorComments", fields: [authorId], references: [id], onDelete: Cascade)
+
+  likes CommentLike[]
+
+  activities Activity[] @relation("CommentActivities")
+
+  // moderation (hidden)
+  hiddenAt   DateTime?
+  hiddenById String?
+  hiddenBy   User?     @relation("HiddenByComments", fields: [hiddenById], references: [id])
+
+  // reports
+  commentReports Report[] @relation("CommentReports")
+
+  @@index([postId, parentId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+// ---------- CommentLike ----------
+model CommentLike {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+// ---------- Favorite ----------
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id])
+  post      BlogPost @relation(fields: [postId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId], name: "userId_postId")
+}
+
+/**
+ * ===========================
+ * MESSAGING
+ * ===========================
+ */
+
 model Conversation {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -235,7 +315,8 @@ model Conversation {
   participants ConversationParticipant[]
   messages     Message[]
 
-  MessageRequest MessageRequest[]
+  // back-rel to MessageRequest (named)
+  requests MessageRequest[] @relation("ConversationRequests")
 }
 
 model ConversationParticipant {
@@ -261,8 +342,16 @@ model Message {
   editedAt       DateTime?
   deletedAt      DateTime?
 
+  // moderation (hidden)
+  hiddenAt   DateTime?
+  hiddenById String?
+  hiddenBy   User?     @relation("HiddenByMessages", fields: [hiddenById], references: [id])
+
   conversation Conversation @relation(fields: [conversationId], references: [id])
-  sender       User         @relation(fields: [senderId], references: [id])
+  sender       User         @relation("SenderMessages", fields: [senderId], references: [id])
+
+  // reports
+  messageReports Report[] @relation("MessageReports")
 }
 
 model MessageRequest {
@@ -273,12 +362,10 @@ model MessageRequest {
   conversationId String?
   status         RequestStatus @default(PENDING)
 
-  // 👇 relation names disambiguate the two User relations
   fromUser User @relation("MessageRequest_fromUser", fields: [fromUserId], references: [id])
   toUser   User @relation("MessageRequest_toUser", fields: [toUserId], references: [id])
 
-  // (optional but recommended) define the relation to Conversation
-  conversation Conversation? @relation(fields: [conversationId], references: [id])
+  conversation Conversation? @relation("ConversationRequests", fields: [conversationId], references: [id])
 
   @@unique([fromUserId, toUserId], name: "from_to_unique")
 }
@@ -289,9 +376,62 @@ model Block {
   blockedId String
   createdAt DateTime @default(now())
 
-  // 👇 name both relations to User to avoid ambiguity
   blocker User @relation("Block_blocker", fields: [blockerId], references: [id])
   blocked User @relation("Block_blocked", fields: [blockedId], references: [id])
 
   @@unique([blockerId, blockedId], name: "blocker_blocked_unique")
+}
+
+/**
+ * ===========================
+ * REPORTING & MODERATION
+ * ===========================
+ */
+
+model Report {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reporterId String
+  reporter   User   @relation("ReporterReports", fields: [reporterId], references: [id])
+
+  targetType ReportTargetType
+  targetId   String
+
+  // optional concrete links for convenience
+  postId String?
+  post   BlogPost? @relation("PostReports", fields: [postId], references: [id])
+
+  commentId String?
+  comment   Comment? @relation("CommentReports", fields: [commentId], references: [id])
+
+  messageId String?
+  message   Message? @relation("MessageReports", fields: [messageId], references: [id])
+
+  userId     String?
+  userTarget User?   @relation("ReportedUser", fields: [userId], references: [id])
+
+  reason  ReportReason
+  details String?
+
+  status       ReportStatus @default(OPEN)
+  resolvedById String?
+  resolvedBy   User?        @relation("ModeratorResolvedReports", fields: [resolvedById], references: [id])
+  resolution   String?
+
+  @@unique([reporterId, targetType, targetId], name: "report_one_per_user_target")
+  @@index([targetType, targetId], name: "report_target_idx")
+}
+
+model ModerationAction {
+  id          String               @id @default(cuid())
+  createdAt   DateTime             @default(now())
+  moderatorId String
+  moderator   User                 @relation("ModeratorActions", fields: [moderatorId], references: [id])
+  targetType  ReportTargetType
+  targetId    String
+  action      ModerationActionType
+  reason      String?
+  notes       String?
 }

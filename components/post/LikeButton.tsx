@@ -1,6 +1,7 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
+import { Button } from "../ui/button";
 
 type Props = {
   postId: string;
@@ -68,7 +69,7 @@ export default function LikeButton({
   }
 
   return (
-    <button
+    <Button
       onClick={toggle}
       disabled={isPending}
       className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition hover:bg-muted disabled:opacity-60"
@@ -77,6 +78,6 @@ export default function LikeButton({
     >
       <span>{optimistic.liked ? "❤️" : "🤍"}</span>
       <span>{optimistic.count}</span>
-    </button>
+    </Button>
   );
 }

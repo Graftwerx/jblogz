@@ -54,7 +54,7 @@ export function ShareButton({
       type="button"
       onClick={share}
       aria-label={label}
-      className={`inline-flex items-center gap-2 rounded-2xl border border-gray-200 px-3 py-2 text-sm shadow-sm hover:bg-gray-50 disabled:opacity-60 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-2xl border border-gray-200 px-3 py-2 text-sm shadow-sm hover:bg-green-400 disabled:opacity-60 ${className}`}
       disabled={pending}
     >
       {/* Minimal inline icon to avoid extra deps */}

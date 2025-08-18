@@ -27,6 +27,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+
+
+
   // 2) For non-public pages, only nudge *authenticated users* without a real handle.
   //    Ask our Node API which can use Prisma.
   const res = await fetch(`${req.nextUrl.origin}/api/handle-status`, {
@@ -49,6 +52,7 @@ export async function middleware(req: NextRequest) {
 
   return NextResponse.next();
 }
+
 
 export const config = {
   matcher: [

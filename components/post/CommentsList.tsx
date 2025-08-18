@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import CommentLikeButton from "./CommentLikeButton";
 import CommentComposer from "./CommentComposer";
+import { FlagButton } from "../moderation/FlagButton";
 
 export default async function CommentsList({ postId }: { postId: string }) {
   const { getUser } = getKindeServerSession();
@@ -12,7 +13,7 @@ export default async function CommentsList({ postId }: { postId: string }) {
 
   // 1) fetch comments + replies
   const comments = await prisma.comment.findMany({
-    where: { postId, parentId: null },
+    where: { postId, parentId: null, hiddenAt: null },
     orderBy: { createdAt: "asc" },
     include: {
       _count: { select: { likes: true, replies: true } },
@@ -112,6 +113,7 @@ export default async function CommentsList({ postId }: { postId: string }) {
 
             {/* actions */}
             <div className="mt-2 flex items-center gap-3">
+              <FlagButton targetType="COMMENT" targetId={c.id} />
               <CommentLikeButton
                 commentId={c.id}
                 initialCount={c._count.likes}
